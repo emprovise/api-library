@@ -151,6 +151,7 @@ public class GitUtil extends ScmUtil {
 	 */
 	public String pull() throws GitAPIException {
 		
+		git.reset().setMode(ResetType.HARD).call();
 		PullResult call = git.pull().call();
 		return call.getFetchResult().getMessages();
 	}
