@@ -25,7 +25,7 @@ public abstract class ScmUtil {
 	 */
 	public static final int HG_REV_LENGTH = 12;
 	public static final int GIT_REV_LENGTH = Constants.OBJECT_ID_STRING_LENGTH;
-	private static final String HEAD_REF = "refs/heads/";
+	private static final String HEAD_REF = "refs" + File.separator + "heads" + File.separator;
 	
 	/**
 	 * Pulls all the recent changes from the Repository. 
@@ -129,8 +129,8 @@ public abstract class ScmUtil {
 	}
 
 	public static File getScmRepository(File directory) throws IOException {
-		File hgRepo = new File(directory, "/.hg");
-		File gitRepo = new File(directory, "/.git");
+		File hgRepo = new File(directory, File.separator + ".hg");
+		File gitRepo = new File(directory, File.separator + ".git");
 		
 		if(hgRepo.exists() && hgRepo.isDirectory()) {
 			return hgRepo;
@@ -170,12 +170,12 @@ public abstract class ScmUtil {
 	public static String getScmUrl(File repository, ScmType scmType) throws IOException {
 		
 		if(scmType.equals(ScmType.HG)) {
-			File hgrc = new File(repository, ".hg/hgrc");
+			File hgrc = new File(repository, ".hg" + File.separator + "hgrc");
 			String scmUrl = getPropertyValue(hgrc, "default");
 			return scmUrl;			
 		}
 		else if(scmType.equals(ScmType.GIT)) {
-			File gitConfig = new File(repository, ".git/config");
+			File gitConfig = new File(repository, ".git" + File.separator + "config");
 			String scmUrl = getPropertyValue(gitConfig, "url");
 			scmUrl = scmUrl.replace(":", "/");
 			scmUrl = scmUrl.replace("git@", "https://");
@@ -195,7 +195,7 @@ public abstract class ScmUtil {
 	public static String getCurrentBranchName(File repository, ScmType scmType) throws IOException {
 		
 		if(scmType.equals(ScmType.HG)) {
-			File hgBranchFile = new File(repository, ".hg/branch");
+			File hgBranchFile = new File(repository, ".hg" + File.separator + "branch");
 			
 			if(hgBranchFile.exists()) {
 				List<String> lines = FileUtils.readLines(new File(hgBranchFile.getAbsolutePath()), "UTF-8"); 
@@ -206,7 +206,7 @@ public abstract class ScmUtil {
 			}
 		}
 		else if(scmType.equals(ScmType.GIT)) {
-			File gitBranchFile = new File(repository, ".git/HEAD");
+			File gitBranchFile = new File(repository, ".git" + File.separator + "HEAD");
 			
 			if(gitBranchFile.exists()) {
 				List<String> lines = FileUtils.readLines(new File(gitBranchFile.getAbsolutePath()), "UTF-8");
