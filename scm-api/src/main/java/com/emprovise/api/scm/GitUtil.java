@@ -78,11 +78,11 @@ public class GitUtil extends ScmUtil {
 		super();
 		
 		if(!directoryPath.endsWith(Constants.DOT_GIT_EXT)) {
-			if(directoryPath.endsWith("/")) {
+			if(directoryPath.endsWith("/") || directoryPath.endsWith("\\")) {
 				directoryPath = directoryPath + Constants.DOT_GIT_EXT; 
 			}
 			else {
-				directoryPath = directoryPath + "/" + Constants.DOT_GIT_EXT;
+				directoryPath = directoryPath + File.separator + Constants.DOT_GIT_EXT;
 			}
 		}
 		
@@ -100,7 +100,7 @@ public class GitUtil extends ScmUtil {
 		super();
 		
 		if(!directory.getName().equals(Constants.DOT_GIT_EXT)) {
-			directory = new File(directory.getPath() + "\\" + Constants.DOT_GIT_EXT);
+			directory = new File(directory.getPath() + File.separator + Constants.DOT_GIT_EXT);
 		}
 		
 		repository = new FileRepository(directory);
@@ -124,7 +124,7 @@ public class GitUtil extends ScmUtil {
 		super();
 		
 		if(!directory.getName().equals(Constants.DOT_GIT_EXT)) {
-			directory = new File(directory.getPath() + "\\" + Constants.DOT_GIT_EXT);
+			directory = new File(directory.getPath() + File.separator + Constants.DOT_GIT_EXT);
 		}
 		
 		this.repository = new FileRepository(directory);
