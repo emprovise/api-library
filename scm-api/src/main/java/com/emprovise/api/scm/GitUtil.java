@@ -20,8 +20,12 @@ import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRefNameException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
+import org.eclipse.jgit.errors.AmbiguousObjectException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
-import org.eclipse.jgit.errors.UnsupportedCredentialItem;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -32,23 +36,18 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.transport.CredentialItem;
-import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.CredentialsProviderUserInfo;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
-import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.SshSessionFactory;
-import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
-
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.UserInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.aragost.javahg.Changeset;
+import com.aragost.javahg.commands.Branch;
 
 /**
  * @author Pranav Patil
@@ -131,14 +130,44 @@ public class GitUtil extends ScmUtil {
 		this.git = new Git(repository);
 		this.credentialsprovider = new UsernamePasswordCredentialsProvider(user, password);
 		this.scmUrl = remoteUrl;
+		
+		JschConfigSessionFactory sessionFactory = new CredentialConfigSessionFactory("");
+		setSessionFactory(sessionFactory);
 	}
-	
+
+	/**
+	 * Creates a new GitUtil Object using the specified directory containing the existing repository.
+	 * Also it sets up credentials using the SSH private key file and the provided passphrase.
+	 * @param directory
+	 * 		{@link File} representing the Existing Repository directory.
+	 * @param privatekey
+	 * 		{@link File} containing SSH private key.
+	 * @param passphrase
+	 * 		{@link String} passphrase for authentication of private key.
+	 * @param remoteUrl
+	 * 		{@link String} URL to the remote git repository.
+	 * @throws IOException 
+	 */
+	public GitUtil(File directory, File privateKey, String passphrase) throws IOException {
+		super();
+		
+		if(!directory.getName().equals(Constants.DOT_GIT_EXT)) {
+			directory = new File(directory.getPath() + File.separator + Constants.DOT_GIT_EXT);
+		}
+		
+		this.repository = new FileRepository(directory);
+		this.git = new Git(repository);
+		
+		JschConfigSessionFactory sessionFactory = new SshConfigSessionFactory(privateKey, passphrase);
+		setSessionFactory(sessionFactory);
+	}
+
 	public GitUtil(Repository repository, Git git) {
 		super();
 		this.repository = repository;
 		this.git = git;
 	}
-
+	
 	/**
 	 * Pulls all the recent changes from the Repository. Note that if the remote repository requires
 	 * authorization information, then git configuration 'gitrc' must be initialized. If gitrc
@@ -237,10 +266,13 @@ public class GitUtil extends ScmUtil {
 				localRepository.delete();
 			}
 			
+			
+			UsernamePasswordCredentialsProvider userCredentials = new UsernamePasswordCredentialsProvider(user, password);
+			
 			Git gitClone = Git.cloneRepository().setURI(remoteUrl).
 			setDirectory(localRepository).
 			setBranch(Constants.MASTER).setBare(false).setRemote(Constants.DEFAULT_REMOTE_NAME).
-			setCredentialsProvider(getUserCredentials(user, password, "")).
+			setCredentialsProvider(userCredentials).
 			setNoCheckout(false).call();
 			
 			return new GitUtil(gitClone.getRepository(), gitClone);
@@ -571,42 +603,8 @@ public class GitUtil extends ScmUtil {
 		FileUtils.cleanDirectory(new File(repository.getDirectory(), Constants.R_TAGS)); 
 	}
 	
-	private static UsernamePasswordCredentialsProvider getUserCredentials(String username, String password, final String passPhrase) throws Exception {
-		try {
-			JschConfigSessionFactory sessionFactory = new JschConfigSessionFactory() {
-				@Override
-				protected void configure(OpenSshConfig.Host hc, Session session) {
-					log.info("host name " + hc.getHostName());
-					CredentialsProvider provider = new CredentialsProvider() {
-						@Override
-						public boolean isInteractive() {
-							return false;
-						}
+	private static void setSessionFactory(JschConfigSessionFactory sessionFactory) {
 
-						@Override
-						public boolean supports(CredentialItem... items) {
-							return true;
-						}
-
-						@Override
-						public boolean get(URIish uri, CredentialItem... items)
-								throws UnsupportedCredentialItem {
-							for (CredentialItem item : items) {
-								if (item instanceof CredentialItem.StringType) {
-									((CredentialItem.StringType) item).setValue(passPhrase);
-								}
-							}
-							return true;
-						}
-					};
-					UserInfo userInfo = new CredentialsProviderUserInfo(session, provider);
-					java.util.Properties config = new java.util.Properties();
-					config.put("StrictHostKeyChecking", "no");
-					session.setConfig(config);
-					session.setUserInfo(userInfo);
-				}
-			};
-			
 			log.info("Setting session factory !!! ");
 			SshSessionFactory.setInstance(sessionFactory);
 			// Create a trust manager that does not validate certificate chains
@@ -625,24 +623,15 @@ public class GitUtil extends ScmUtil {
 						String authType) {
 				}
 			} };
+			
 			// Install the all-trusting trust manager
 			try {
 				SSLContext sc = SSLContext.getInstance("SSL");
 				sc.init(null, trustAllCerts, new java.security.SecureRandom());
-				HttpsURLConnection.setDefaultSSLSocketFactory(sc
-						.getSocketFactory());
+				HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
 			} catch (GeneralSecurityException e) { 
 				log.error("Exception", e);
 			}
-			
-			UsernamePasswordCredentialsProvider userCredentials = new UsernamePasswordCredentialsProvider(
-					username, password);
-			return userCredentials;
-			
-		} catch (Exception e) {
-			log.error("Exception", e);
-			throw e;
-		}
 	}
 	
 	private Git createGitApi(File repository) throws IOException {

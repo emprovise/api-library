@@ -58,7 +58,7 @@ public abstract class ScmUtil {
 			return new GitUtil(repository);
 		}
 		else {
-			throw new RuntimeException("Invalid Scm Repository. Currently only Mercurial and Git source control are supported.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 
@@ -75,7 +75,22 @@ public abstract class ScmUtil {
 			return new GitUtil(repository, username, password, null);
 		}
 		else {
-			throw new UnsupportedOperationException("Only Scm.HG type is supported for this method.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
+		}
+	}
+	
+	public static ScmUtil loadScmRepository(File repository, File privateKey, String passphrase) throws IOException {
+		
+		ScmType scmType = getScmType(repository);
+		
+		if(scmType.equals(ScmType.HG)) {
+			return new HgUtil(repository, privateKey);
+		}
+		else if(scmType.equals(ScmType.GIT)) {
+			return new GitUtil(repository, privateKey, passphrase);
+		}
+		else {
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 	
@@ -88,7 +103,7 @@ public abstract class ScmUtil {
 			return GitUtil.clone(scmUrl, repository);
 		}
 		else {
-			throw new RuntimeException("Invalid Scm Repository. Currently only Mercurial and Git source control are supported.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 	
@@ -101,7 +116,7 @@ public abstract class ScmUtil {
 			return GitUtil.clone(scmUrl, repository, username, password);
 		}
 		else {
-			throw new RuntimeException("Invalid Scm Repository. Currently only Mercurial and Git source control are supported.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 	
@@ -154,7 +169,7 @@ public abstract class ScmUtil {
 			return ScmType.GIT;
 		}
 		else {
-			throw new RuntimeException("Invalid Scm Repository. Currently only Mercurial and Git source control are supported.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 	
@@ -183,7 +198,7 @@ public abstract class ScmUtil {
 			return scmUrl;			
 		}
 		else {
-			throw new RuntimeException("Invalid Scm Repository. Currently only Mercurial and Git source control are supported.");
+			throw new RuntimeException(UNSUPPORTED_SCM_MESSAGE);
 		}
 	}
 	
@@ -236,4 +251,6 @@ public abstract class ScmUtil {
 		
 		return value;
 	}
+	
+	private static final String UNSUPPORTED_SCM_MESSAGE = "Invalid Scm Repository. Currently only Mercurial and Git source control are supported.";
 }
