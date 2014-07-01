@@ -22,7 +22,7 @@ if NOT %ERRORLEVEL%==0 (
    exit /B %ERRORLEVEL%
 )
 
-java -classpath .;%campfire.libpath%/* com.emprovise.utility.CampfireUtility --domain jdisg --user PatilPranav@JohnDeere.com --password jdlink001 --room Test --proxydomain proxyv.dpn.deere.com --proxyport 80 --proxyuser a903825 --proxypassword rojpp11z --post "message2"
+java -classpath .;%campfire.libpath%/* com.emprovise.utility.CampfireUtility --domain mydomain --user user@company.com --password secret --room Test --proxydomain proxy.server.com --proxyport 80 --proxyuser puser --proxypassword proxysecret --post "message"
 
 endlocal
 echo on
