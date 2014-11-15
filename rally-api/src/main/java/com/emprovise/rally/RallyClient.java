@@ -51,12 +51,22 @@ public class RallyClient {
 	 * @throws Exception
 	 */
     public RallyClient(String rallyUser, String rallyPassword, String proxyUrl, String proxyUser, String proxyPassword) throws Exception {
-		this.restApi = new RallyProxyRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword, proxyUrl, proxyUser, proxyPassword);
+		this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword, proxyUrl, proxyUser, proxyPassword);
+        initializeRallyApi();
+    }
+
+    public RallyClient(String apiKey, String proxyUrl, String proxyUser, String proxyPassword) throws Exception {
+        this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey, proxyUrl, proxyUser, proxyPassword);
         initializeRallyApi();
     }
 
     public RallyClient(String rallyUser, String rallyPassword) throws Exception {
         this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword);
+        initializeRallyApi();
+    }
+
+    public RallyClient(String apiKey) throws Exception {
+        this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey);
         initializeRallyApi();
     }
 
