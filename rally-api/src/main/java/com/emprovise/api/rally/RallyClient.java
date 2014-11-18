@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
+import static com.emprovise.api.rally.param.Param.*;
 
 public class RallyClient {
 	
