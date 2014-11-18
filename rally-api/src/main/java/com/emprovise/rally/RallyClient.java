@@ -1,6 +1,7 @@
 package com.emprovise.rally;
 
 import com.emprovise.rally.exception.RallyConcurrencyConflictException;
+import com.emprovise.rally.param.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -24,6 +25,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.emprovise.rally.param.Param.*;
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
 
@@ -50,13 +52,13 @@ public class RallyClient {
 	 * Initializes the Rally API by establishing a connection with the Rally Server.
 	 * @throws Exception
 	 */
-    public RallyClient(String rallyUser, String rallyPassword, String proxyUrl, String proxyUser, String proxyPassword) throws Exception {
-		this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword, proxyUrl, proxyUser, proxyPassword);
+    public RallyClient(String rallyUser, String rallyPassword, URI proxyUri, String proxyUser, String proxyPassword) throws Exception {
+		this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword, proxyUri, proxyUser, proxyPassword);
         initializeRallyApi();
     }
 
-    public RallyClient(String apiKey, String proxyUrl, String proxyUser, String proxyPassword) throws Exception {
-        this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey, proxyUrl, proxyUser, proxyPassword);
+    public RallyClient(String apiKey, URI proxyUri, String proxyUser, String proxyPassword) throws Exception {
+        this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey, proxyUri, proxyUser, proxyPassword);
         initializeRallyApi();
     }
 
@@ -228,11 +230,11 @@ public class RallyClient {
 		UpdateResponse updateResponse = restApi.update(updateRequest);
 
 		if (!updateResponse.wasSuccessful()) {
-			throw createException(updateResponse);
+			throw resolveException(updateResponse);
 		}
 	}
 
-	private RuntimeException createException(UpdateResponse updateResponse) {
+	private RuntimeException resolveException(UpdateResponse updateResponse) {
 		StringBuilder errors = new StringBuilder("Error in updating rally task: ");
 
 		for (String err : updateResponse.getErrors()) {
@@ -281,24 +283,15 @@ public class RallyClient {
 	 */
 	public JsonObject getRallyObject(String rallyIdentifier, boolean fetchAll, String... attributes) throws IOException, ParseException, URISyntaxException {
 
-        QueryRequest request = null;
-        
+		String objectType = null;
+
         if(rallyIdentifier != null) {
         	rallyIdentifier = rallyIdentifier.trim();
-        	
-            if(rallyIdentifier.startsWith("US") || rallyIdentifier.startsWith("us")) {
-            	request = new QueryRequest("hierarchicalrequirement");
-            }
-            else if(rallyIdentifier.startsWith("TA") || rallyIdentifier.startsWith("ta")) {
-                request = new QueryRequest("task");
-            }
-            else if(rallyIdentifier.startsWith("DE") || rallyIdentifier.startsWith("de")) {
-            	request = new QueryRequest("defect");
-            }
-        }
+			objectType = getObjectType(rallyIdentifier);
+		}
 
-		if (request != null) {
-
+		if (objectType != null) {
+			QueryRequest request = new QueryRequest(objectType);
 			request.setQueryFilter(new QueryFilter("FormattedID", "=", rallyIdentifier));
 			
 			if(!fetchAll) {
@@ -340,8 +333,28 @@ public class RallyClient {
 		return null;
     }
 
+	private String getObjectType(String rallyIdentifier) {
+
+		rallyIdentifier = rallyIdentifier.toUpperCase();
+
+		if(rallyIdentifier.startsWith("US")) {
+            return "HierarchicalRequirement";
+        }
+		else if(rallyIdentifier.startsWith("DE")) {
+			return "Defect";
+		}
+        else if(rallyIdentifier.startsWith("TA")) {
+			return "Task";
+        }
+		else if(rallyIdentifier.startsWith("TC")) {
+			return "TestCase";
+		}
+
+		return null;
+	}
+
 	public static String extractRallyIdPrefix(String s) {
-        Pattern pattern = Pattern.compile("(DE|US|TA)(\\d{3,})");
+        Pattern pattern = Pattern.compile("(DE|US|TA|TC)(\\d{3,})");
         Matcher matcher = pattern.matcher(s.toUpperCase());
 
         if (matcher.find()) {
@@ -406,7 +419,7 @@ public class RallyClient {
 		  
 	  if (!updateResponse.wasSuccessful()) {
 		  	
-	  	  throw createException(updateResponse);
+	  	  throw resolveException(updateResponse);
 	  }
 	}
 	
@@ -590,41 +603,95 @@ public class RallyClient {
 	 * @throws IOException
 	 */
 	public JsonObject createTag(String tagName) throws IOException{
-
-		JsonObject newtag = new JsonObject();
-	    newtag.addProperty("Name", tagName);
-	    CreateRequest tagRequest = new CreateRequest("Tag", newtag);
-	    CreateResponse tagResponse = restApi.create(tagRequest);
-
-	    if(tagResponse.wasSuccessful()) {
-	    	
-	    	JsonObject tagJsonObject = tagResponse.getObject().getAsJsonObject();
-            return tagJsonObject;
-	    }
-	    else {
-	    	return null;
-	    }
+		JsonObject tag = new JsonObject();
+	    tag.addProperty(NAME.value(), tagName);
+		return createRallyObject("Tag", tag);
 	}
 
-    public JsonObject createDefect(String description) throws IOException{
+	public JsonObject createUser(String username, String emailAddress) throws IOException{
+		JsonObject user = new JsonObject();
+		user.addProperty(USERNAME.value(), username);
+		user.addProperty(EMAILADDRESS.value(), emailAddress);
+		return createRallyObject("User", user);
+	}
+
+	public JsonObject createUserStory(String name, String description, ScheduleState state, String ownerRef) throws IOException{
+		JsonObject userStory = new JsonObject();
+		userStory.addProperty(NAME.value(), name);
+		userStory.addProperty(DESCRIPTION.value(), description);
+		userStory.addProperty(STATE.value(), state.value());
+		userStory.addProperty(OWNER.value(), ownerRef);
+		return createRallyObject("HierarchicalRequirement", userStory);
+	}
+
+	public JsonObject createDefect(String name, String description, DefectState defectState, String ownerRef,
+								   Priority priority, Severity severity) throws IOException{
         JsonObject defect = new JsonObject();
-        defect.addProperty("Name", description);
-        defect.addProperty("State", "Open");
-        defect.addProperty("Owner", "/user/12361716944");
-        CreateRequest createRequest = new CreateRequest("defect", defect);
-        CreateResponse tagResponse = restApi.create(createRequest);
+        defect.addProperty(NAME.value(), name);
+		defect.addProperty(DESCRIPTION.value(), description);
+        defect.addProperty(STATE.value(), defectState.value());
+        defect.addProperty(OWNER.value(), ownerRef);
+		defect.addProperty(PRIORITY.value(), priority.value());
+		defect.addProperty(SEVERITY.value(), severity.value());
+		return createRallyObject("Defect", defect);
+	}
 
-        if(tagResponse.wasSuccessful()) {
+	public JsonObject createTask(String name, String description, ScheduleState state, String ownerRef, String storyRef) throws IOException{
+		JsonObject task = new JsonObject();
+		task.addProperty(NAME.value(), name);
+		task.addProperty(DESCRIPTION.value(), description);
+		task.addProperty(STATE.value(), state.value());
+		task.addProperty(OWNER.value(), ownerRef);
+		task.addProperty(WORKPRODUCT.value(), storyRef);
+		return createRallyObject("Task", task);
+	}
 
-            JsonObject tagJsonObject = tagResponse.getObject().getAsJsonObject();
-            return tagJsonObject;
+	public JsonObject createTestCase(String name, String description, TestType type, TestMethod method, String projectRef) throws IOException{
+		JsonObject testCase = new JsonObject();
+		testCase.addProperty(NAME.value(), name);
+		testCase.addProperty(DESCRIPTION.value(), description);
+		testCase.addProperty(TYPE.value(), type.value());
+		testCase.addProperty(METHOD.value(), method.value());
+		testCase.addProperty(PROJECT.value(), projectRef);
+		return createRallyObject("TestCase", testCase);
+	}
+
+	public JsonObject createTestStep(String input, String expectedResult, String testCaseRef) throws IOException {
+		JsonObject testStep = new JsonObject();
+		testStep.addProperty(INPUT.value(), input);
+		testStep.addProperty(EXPECTEDRESULT.value(), expectedResult);
+		testStep.addProperty(TESTCASE.value(), testCaseRef);
+		return createRallyObject("TestCaseStep", testStep);
+	}
+
+	public JsonObject createTestResult(String verdict, String notes, String build, String userRef, String testCaseRef) throws IOException {
+		JsonObject testCaseResult = new JsonObject();
+		testCaseResult.addProperty(VERDICT.value(), verdict);
+
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+		String currentDate = formatter.format(Calendar.getInstance().getTime());
+		testCaseResult.addProperty(DATE.value(), currentDate);
+
+		testCaseResult.addProperty(NOTES.value(), notes);
+		testCaseResult.addProperty(BUILD.value(), build);
+		testCaseResult.addProperty(TESTER.value(), userRef);
+		testCaseResult.addProperty(TESTCASE.value(), testCaseRef);
+		return createRallyObject("TestCaseResult", testCaseResult);
+	}
+
+	private JsonObject createRallyObject(String objectType, JsonObject requestObject) throws IOException {
+		CreateRequest createRequest = new CreateRequest(objectType, requestObject);
+		CreateResponse createResponse = restApi.create(createRequest);
+
+		if(createResponse.wasSuccessful()) {
+            JsonObject responseObject = createResponse.getObject().getAsJsonObject();
+            return responseObject;
         }
-        else {
-            return null;
-        }
-    }
 
-    /**
+        return null;
+	}
+
+	/**
      * Deletes the rally reference object with the specified reference id.
      * @param refId
      *		{@link String} representing the reference id of the rally object to be deleted.
@@ -632,7 +699,7 @@ public class RallyClient {
      * 		true when deletion is successful else false.
      * @throws IOException
      */
-    public boolean deleteObject(String refId) throws IOException {
+    public boolean deleteRallyObject(String refId) throws IOException {
         DeleteRequest deleteRequest = new DeleteRequest(refId);
         DeleteResponse deleteResponse = restApi.delete(deleteRequest);
 
