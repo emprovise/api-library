@@ -26,7 +26,7 @@ public class RallyDefaultRestApi extends RallyRestApi {
 
     private String rallyUser = null;
     private String rallyPassword = null;
-    private String proxyUrl = null;
+    private URI proxyUri = null;
     private String proxyUser = null;
     private String proxyPassword = null;
 
@@ -40,20 +40,20 @@ public class RallyDefaultRestApi extends RallyRestApi {
         super(new ApiKeyClient(server, apiKey));
     }
 
-    public RallyDefaultRestApi(URI server, String userName, String password, String proxyUrl, String proxyUser, String proxyPassword) {
+    public RallyDefaultRestApi(URI server, String userName, String password, URI proxyUri, String proxyUser, String proxyPassword) {
         super(server, userName, password);
-        this.proxyUrl = proxyUrl;
+        this.proxyUri = proxyUri;
         this.proxyUser = proxyUser;
         this.proxyPassword = proxyPassword;
-        setProxy(proxyUrl, proxyUser, proxyPassword);
+        setValidProxyUri(proxyUri, proxyUser, proxyPassword);
     }
 
-    public RallyDefaultRestApi(URI server, String apiKey, String proxyUrl, String proxyUser, String proxyPassword) {
+    public RallyDefaultRestApi(URI server, String apiKey, URI proxyUri, String proxyUser, String proxyPassword) {
         super(server, apiKey);
-        this.proxyUrl = proxyUrl;
+        this.proxyUri = proxyUri;
         this.proxyUser = proxyUser;
         this.proxyPassword = proxyPassword;
-        setProxy(proxyUrl, proxyUser, proxyPassword);
+        setValidProxyUri(proxyUri, proxyUser, proxyPassword);
     }
 
     @Override
@@ -95,12 +95,11 @@ public class RallyDefaultRestApi extends RallyRestApi {
             httpClient.getCredentialsProvider().setCredentials(new AuthScope(serverUri.getHost(), serverUri.getPort()),
                     new UsernamePasswordCredentials(rallyUser, rallyPassword));
 
-            if(isHostAvailable(proxyUrl)) {
-                URI proxy = new URI("http", proxyUrl, "", null);
-                httpClient.getCredentialsProvider().setCredentials(new AuthScope(proxy.getHost(), proxy.getPort()),
+            if(proxyUri != null && isHostAvailable(proxyUri.getHost())) {
+                httpClient.getCredentialsProvider().setCredentials(new AuthScope(proxyUri.getHost(), proxyUri.getPort()),
                         new UsernamePasswordCredentials(proxyUser, proxyPassword));
-                HttpHost httpproxy = new HttpHost(proxyUrl, 80, "http");
-                httpClient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, httpproxy);
+                HttpHost httpProxy = new HttpHost(proxyUri.getHost(), 80, "http");
+                httpClient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, httpProxy);
             }
 
             String rallyUrl = RallyClient.RALLY_HOST + "/slm/webservice/v2.0/security/authorize";
@@ -126,15 +125,9 @@ public class RallyDefaultRestApi extends RallyRestApi {
         }
     }
 
-    private void setProxy(String proxyUrl, String user, String password) {
-        if(isHostAvailable(proxyUrl)) {
-            URI proxy;
-            try {
-                proxy = new URI("http", proxyUrl, "", null);
-            } catch (URISyntaxException e) {
-                throw new RuntimeException(proxyUrl, e);
-            }
-            this.setProxy(proxy, user, password);
+    private void setValidProxyUri(URI proxyUri, String user, String password) {
+        if(proxyUri != null && isHostAvailable(proxyUri.getHost())) {
+            this.setProxy(proxyUri, user, password);
         }
     }
 
