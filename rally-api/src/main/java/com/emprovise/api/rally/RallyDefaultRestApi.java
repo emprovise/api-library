@@ -1,7 +1,7 @@
-package com.emprovise.rally;
+package com.emprovise.api.rally;
 
 
-import com.emprovise.rally.exception.RallyPasswordExpiredException;
+import com.emprovise.api.rally.exception.RallyPasswordExpiredException;
 import com.rallydev.rest.RallyRestApi;
 import com.rallydev.rest.client.ApiKeyClient;
 import com.rallydev.rest.request.QueryRequest;

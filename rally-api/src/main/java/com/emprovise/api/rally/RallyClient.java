@@ -1,7 +1,7 @@
-package com.emprovise.rally;
+package com.emprovise.api.rally;
 
-import com.emprovise.rally.exception.RallyConcurrencyConflictException;
-import com.emprovise.rally.param.*;
+import com.emprovise.api.rally.exception.RallyConcurrencyConflictException;
+import com.emprovise.api.rally.param.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -25,7 +25,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.emprovise.rally.param.Param.*;
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
 

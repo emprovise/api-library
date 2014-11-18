@@ -1,4 +1,4 @@
-package com.emprovise.rally.exception;
+package com.emprovise.api.rally.exception;
 
 /**
  *  RallyConcurrencyConflictException is thrown when a failure occurs while updating the user-story or the defect

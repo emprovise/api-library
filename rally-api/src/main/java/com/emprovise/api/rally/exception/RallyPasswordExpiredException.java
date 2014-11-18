@@ -1,4 +1,4 @@
-package com.emprovise.rally.exception;
+package com.emprovise.api.rally.exception;
 
 
 /**
