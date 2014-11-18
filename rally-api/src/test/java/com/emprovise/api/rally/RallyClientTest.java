@@ -1,4 +1,4 @@
-package com.emprovise.rally;
+package com.emprovise.api.rally;
 
 import junit.framework.Assert;
 import org.junit.Test;
