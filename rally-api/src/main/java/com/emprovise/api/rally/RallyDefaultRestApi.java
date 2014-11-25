@@ -88,6 +88,10 @@ public class RallyDefaultRestApi extends RallyRestApi {
      */
     private boolean isPasswordExpired() throws ParseException, IOException {
 
+        if(rallyUser==null || rallyPassword==null) {
+            return false;
+        }
+
         DefaultHttpClient httpClient = new DefaultHttpClient();
 
         try {

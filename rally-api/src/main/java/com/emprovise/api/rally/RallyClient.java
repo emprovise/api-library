@@ -49,7 +49,8 @@ public class RallyClient {
 	private RallyDefaultRestApi restApi = null;
 
 	/**
-	 * Initializes the Rally API by establishing a connection with the Rally Server.
+	 * Initializes the Rally API by establishing a connection with the Rally Server using rally credentials
+	 * with the specified URI for the proxy server.
 	 * @throws Exception
 	 */
     public RallyClient(String rallyUser, String rallyPassword, URI proxyUri, String proxyUser, String proxyPassword) throws Exception {
@@ -57,16 +58,40 @@ public class RallyClient {
         initializeRallyApi();
     }
 
+	/**
+	 * Initializes the Rally API by establishing a connection with the Rally Server using rally API key
+	 * with the specified URI for the proxy server.
+	 * Please refer to @see <a href="https://help.rallydev.com/rally-application-manager">Rally Api Key Documentation</a>
+	 *
+	 * @param apiKey
+	 * @param proxyUri
+	 * @param proxyUser
+	 * @param proxyPassword
+	 * @throws Exception
+	 */
     public RallyClient(String apiKey, URI proxyUri, String proxyUser, String proxyPassword) throws Exception {
         this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey, proxyUri, proxyUser, proxyPassword);
         initializeRallyApi();
     }
 
+	/**
+	 * Initializes the Rally API by establishing a connection with the Rally Server using rally credentials.
+	 *
+	 * @param rallyUser
+	 * @param rallyPassword
+	 * @throws Exception
+	 */
     public RallyClient(String rallyUser, String rallyPassword) throws Exception {
         this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword);
         initializeRallyApi();
     }
 
+	/**
+	 * Initializes the Rally API by establishing a connection with the Rally Server using rally API key.
+	 * Please refer to @see <a href="https://help.rallydev.com/rally-application-manager">Rally Api Key Documentation</a>
+	 * @param apiKey
+	 * @throws Exception
+	 */
     public RallyClient(String apiKey) throws Exception {
         this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), apiKey);
         initializeRallyApi();
@@ -83,6 +108,19 @@ public class RallyClient {
         this.restApi.setWsapiVersion(WSAPI_VERSION);
 	}
 
+	/**
+	 * Customize the application and vendor name which uses the rally API.
+	 *
+	 * @param applicationName
+	 * 							Application name using rally api.
+	 * @param applicationVendor
+	 * 							Application vendor for the application.
+	 */
+	public void setApplication(String applicationName, String applicationVendor) {
+		this.restApi.setApplicationName(applicationName);
+		this.restApi.setApplicationVendor(applicationVendor);
+	}
+
     /**
      * Close the Rally-API connection established during the initialization.
      * @throws IOException 
@@ -93,44 +131,51 @@ public class RallyClient {
 
 	/**
 	 * @see #updateRally(JsonObject, String, String, String, String, String, String)
-	 * 
+	 *
 	 * @param rallyIdentifier
+	 *					Valid rally identifier identifying User Story, Defect, Task or a Test Case.
 	 * @param userName
+	 * 					User name who wants to update rally notes.
 	 * @param userEmail
+	 * 					User contact email address.
 	 * @param message
+	 * 					User's comments or messages to be updated to the notes section of rally item.
 	 * @param scmUrl
-	 * @param node
+	 * 					Scm url link were the Scm server is hosted.
+	 * @param changeset
+	 * 					Scm changeset which refers to a particular commit.
 	 * @param tagName
+	 * 					Tag to be added to the rally item.
 	 * @return
 	 * @throws Exception
 	 */
-	public Boolean updateRally(String rallyIdentifier, String userName, String userEmail, String message, String scmUrl, String node, String tagName) throws Exception {
+	public Boolean updateRally(String rallyIdentifier, String userName, String userEmail, String message, String scmUrl, String changeset, String tagName) throws Exception {
 		JsonObject rallyObject = getRallyObject(rallyIdentifier, true);
-		return updateRally(rallyObject, userName, userEmail, message, scmUrl, node, tagName);
+		return updateRally(rallyObject, userName, userEmail, message, scmUrl, changeset, tagName);
 	}
 
 	/**
-     * Fetch the Rally artifact i.e. User Story, Defect or Task with its status and notes details, and call
-     * update rally method to make rally updates.
-     * 
-     * return (null=object not found,true=found and updated,false=found and previously updated)
-     * 
+	 * Fetch the Rally artifact i.e. User Story, Defect or Task with its status and notes details, and call
+	 * update rally method to make rally updates.
+	 *
+	 * return (null=object not found,true=found and updated,false=found and previously updated)
+	 *
 	 * @param rallyObject
-     * @param userName
-     * 		Name of the Author who made the SCM changes. 
-     * @param userEmail
-     * 		Email Address of the Author who made the SCM changes.
-     * @param message
-     * 		Comments or messages retrieved from the SCM changes.
-     * @param scmUrl
-     * 		SCM Repository url which is added to create a changeset link in rally updates.
-     * @param node
-     * 		Mercurial node in order to detect if the update already exists in rally.
-     * @param tagName
-     * 		Tag Name to be added to the rally user story or defect.
-     * @throws Exception
+	 * @param userName
+	 * 		Name of the Author who made the SCM changes.
+	 * @param userEmail
+	 * 		Email Address of the Author who made the SCM changes.
+	 * @param message
+	 * 		Comments or messages retrieved from the SCM changes.
+	 * @param scmUrl
+	 * 		SCM Repository url which is added to create a changeset link in rally updates.
+	 * @param changeset
+	 * 		Mercurial node in order to detect if the update already exists in rally.
+	 * @param tagName
+	 * 		Tag Name to be added to the rally user story or defect.
+	 * @throws Exception
 	 */
-	private Boolean updateRally(JsonObject rallyObject, String userName, String userEmail, String message, String scmUrl, String node, String tagName) throws Exception {
+	private Boolean updateRally(JsonObject rallyObject, String userName, String userEmail, String message, String scmUrl, String changeset, String tagName) throws Exception {
 		
 		if(rallyObject == null) {
 			return null;
@@ -186,7 +231,7 @@ public class RallyClient {
 			
 		DateFormat formatter = new SimpleDateFormat("MMM-dd-yyyy");
 
-		if(node != null && !notes.toString().contains(node) && !notes.toString().contains(message)) {
+		if(changeset != null && !notes.toString().contains(changeset) && !notes.toString().contains(message)) {
 			
 			notes.append("<br /> <a href=\"mailto:");
 			notes.append(userEmail).append("\">").append(userName).append("</a> - ");
@@ -210,8 +255,16 @@ public class RallyClient {
 		return false;
     }
 
-	public String getNotes(String rallyId) throws Exception {
-		JsonObject rallyObject = getRallyObject(rallyId);
+	/**
+	 * Get Notes using the rally Identifier
+	 * @param rallyIdentifier
+	 * * 		Valid rally identifier identifying User Story, Defect, Task or a Test Case.
+	 * @return
+	 * 			Notes for the specified rally object.
+	 * @throws Exception
+	 */
+	public String getNotes(String rallyIdentifier) throws Exception {
+		JsonObject rallyObject = getRallyObject(rallyIdentifier);
 		if(rallyObject == null) {
 			return null;
 		}
@@ -219,8 +272,16 @@ public class RallyClient {
 		return notes;
     }
 
-	public void setNotes(String rallyId, String notes) throws Exception {
-		JsonObject rallyObject = getRallyObject(rallyId);
+	/**
+	 * Update the notes for the rally object using rally identifier.
+	 * @param rallyIdentifier
+	 * 			Valid rally identifier identifying User Story, Defect, Task or a Test Case.
+	 * @param notes
+	 * 			Notes or Comments which the needs to be added to the rally object.
+	 * @throws Exception
+	 */
+	public void setNotes(String rallyIdentifier, String notes) throws Exception {
+		JsonObject rallyObject = getRallyObject(rallyIdentifier);
 		JsonObject rallyTask = new JsonObject();
 		rallyTask.addProperty("Notes", notes);
 
@@ -234,6 +295,15 @@ public class RallyClient {
 		}
 	}
 
+	/**
+	 * Resolves the exception based on the rally response object.
+	 * Throws RallyConcurrencyException for any conflicts occurred while updating
+	 * a particular items, which could be retried later, else throws RuntimeException
+	 * for the rest of exceptions.
+	 *
+	 * @param updateResponse
+	 * @return
+	 */
 	private RuntimeException resolveException(UpdateResponse updateResponse) {
 		StringBuilder errors = new StringBuilder("Error in updating rally task: ");
 
@@ -252,9 +322,11 @@ public class RallyClient {
 
 	/**
 	 * @see #getRallyObject(String, boolean, String...)
-	 * 
+	 *
 	 * @param rallyIdentifier
+	 * 					Valid rally identifier identifying User Story, Defect, Task or a Test Case.
 	 * @return
+	 * 					Rally json object containing the details of the rally item specified by rally identifier.
 	 * @throws IOException
 	 * @throws ParseException
 	 * @throws URISyntaxException
@@ -265,12 +337,12 @@ public class RallyClient {
 		return getRallyObject(rallyIdentifier, fetchAll, attributesNone);
 	}
 
-	
 	/**
-     * Fetches the Rally Gson object for the specified User Story or Defect which contains details such as name, status, notes etc.
-     * 
+	 * Fetches the Rally Gson object for the specified Rally UserStory, Defect, Task, TestCase which contains details such as
+	 * name, status, notes etc.
+	 *
 	 * @param rallyIdentifier
-     * 		Rally user story or defect number.
+	 * 		Rally user story or defect number.
 	 * @param fetchAll
 	 * 		Fetches all the attributes for the Rally Gson Object when set true, else fetches only the attributes specified below.
 	 * @param attributes
@@ -353,9 +425,18 @@ public class RallyClient {
 		return null;
 	}
 
-	public static String extractRallyIdPrefix(String s) {
+	/**
+	 * Extracts rally identifier from the text, currently supporting User Story (US), Defect (DE), Task (TA) or
+	 * a Test Case (TC).
+	 *
+	 * @param text
+	 * 			Text to be parsed to retrieve the rally identifier as per format standards.
+	 * @return
+	 * 			Rally Identifier.
+	 */
+	public static String extractRallyIdPrefix(String text) {
         Pattern pattern = Pattern.compile("(DE|US|TA|TC)(\\d{3,})");
-        Matcher matcher = pattern.matcher(s.toUpperCase());
+        Matcher matcher = pattern.matcher(text.toUpperCase());
 
         if (matcher.find()) {
             return trim(matcher.group(0));
@@ -363,15 +444,15 @@ public class RallyClient {
 
         return null;
     }
-	
+
 	/**
-     * Fetches the name of the User Story or Defect for the specified Rally Identifier. 
-     * @param rallyIdentifier
-     * 		Identification number for User Story or a Defect in Rally.
-     * @return
-     * 		Name of the User Story or Defect as specified in the Rally.
-     * @throws Exception
-     */
+	 * Fetches the name of the Rally item for the specified Rally Identifier.
+	 * @param rallyIdentifier
+	 * 		Identification number for Rally Item (User Story, Defect, Task, Test Case).
+	 * @return
+	 * 		Name of the rally item for the specified Rally identifier.
+	 * @throws Exception
+	 */
 	public String getRallyDescription(String rallyIdentifier) throws Exception {
 		
 		JsonObject rallyObject = getRallyObject(rallyIdentifier, false, "Name");
@@ -382,7 +463,7 @@ public class RallyClient {
 			return null;
 		}
     }
-	
+
 	/**
 	 * Updates the rally user story or defect using the reference id with the specified notes, tags and fixed or completed status.
 	 * @param restApi
@@ -422,14 +503,14 @@ public class RallyClient {
 	  	  throw resolveException(updateResponse);
 	  }
 	}
-	
+
 	/**
-	 * Adds the tag object with the specified name to the specified tag array. 
+	 * Adds the tag object with the specified name to the specified tag array.
 	 * When the tag array is empty or null, creates a new tag array to add the specified tag.
 	 * When the tag with specified name is not present and cannot be created then returns a null tag array.
 	 * When the tag name is already present in the existing tags array then returns a null tag array.
 	 * When the tag name is not present in rally, creates a new tag and adds to the tag array.
-	 * 
+	 *
 	 * @param tagName
 	 * 		name of a new or existing tag to be added to the UserStory/Defect.
 	 * @param tags
@@ -458,11 +539,11 @@ public class RallyClient {
 		
 		return tags;
 	}
-    
+
 	/**
 	 * Gets the tag object for the specified tag name. 
 	 * When the tag is present returns the existing tag object else creates a new tag object.
-	 *  
+	 *
 	 * @param tagName
 	 * 		used to fetch or create the tag object.
 	 * @return
@@ -569,7 +650,7 @@ public class RallyClient {
         }
     }
 
-    /**
+	/**
 	 * Fetches the existing tag object using the specified tag name. 
 	 * @param tagName
 	 * 		used to fetch the existing tag object.
@@ -692,13 +773,13 @@ public class RallyClient {
 	}
 
 	/**
-     * Deletes the rally reference object with the specified reference id.
-     * @param refId
-     *		{@link String} representing the reference id of the rally object to be deleted.
-     * @return
-     * 		true when deletion is successful else false.
-     * @throws IOException
-     */
+	 * Deletes the rally reference object with the specified reference id.
+	 * @param refId
+	 *		{@link String} representing the reference id of the rally object to be deleted.
+	 * @return
+	 * 		true when deletion is successful else false.
+	 * @throws IOException
+	 */
     public boolean deleteRallyObject(String refId) throws IOException {
         DeleteRequest deleteRequest = new DeleteRequest(refId);
         DeleteResponse deleteResponse = restApi.delete(deleteRequest);
