@@ -30,6 +30,7 @@ public class RallyDefaultRestApi extends RallyRestApi {
     private String proxyUser = null;
     private String proxyPassword = null;
 
+    @Deprecated
     public RallyDefaultRestApi(URI server, String userName, String password) {
         super(server, userName, password);
         this.rallyUser = userName;
@@ -40,6 +41,7 @@ public class RallyDefaultRestApi extends RallyRestApi {
         super(new ApiKeyClient(server, apiKey));
     }
 
+    @Deprecated
     public RallyDefaultRestApi(URI server, String userName, String password, URI proxyUri, String proxyUser, String proxyPassword) {
         super(server, userName, password);
         this.proxyUri = proxyUri;
