@@ -29,6 +29,10 @@ import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
 import static com.emprovise.api.rally.param.Param.*;
 
+/**
+ * Rally Client uses the Rally Rest Services to create, fetch and update Rally items.
+ * Please refer to @see <a href="https://rally1.rallydev.com/slm/doc/webservice/">Rally Webservice Documentation</a>
+ */
 public class RallyClient {
 	
 	/**
@@ -52,7 +56,9 @@ public class RallyClient {
 	 * Initializes the Rally API by establishing a connection with the Rally Server using rally credentials
 	 * with the specified URI for the proxy server.
 	 * @throws Exception
+	 * @deprecated  user credentials are replaced by rally api keys
 	 */
+	@Deprecated
     public RallyClient(String rallyUser, String rallyPassword, URI proxyUri, String proxyUser, String proxyPassword) throws Exception {
 		this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword, proxyUri, proxyUser, proxyPassword);
         initializeRallyApi();
@@ -80,7 +86,9 @@ public class RallyClient {
 	 * @param rallyUser
 	 * @param rallyPassword
 	 * @throws Exception
+	 * @deprecated  user credentials are replaced by rally api keys
 	 */
+	@Deprecated
     public RallyClient(String rallyUser, String rallyPassword) throws Exception {
         this.restApi = new RallyDefaultRestApi(new URI(RALLY_HOST), rallyUser, rallyPassword);
         initializeRallyApi();
@@ -119,6 +127,23 @@ public class RallyClient {
 	public void setApplication(String applicationName, String applicationVendor) {
 		this.restApi.setApplicationName(applicationName);
 		this.restApi.setApplicationVendor(applicationVendor);
+	}
+
+	/**
+	 * Calls the default URL on the rally server to determine that the authentication is
+	 * successful, since initializing the RallyClient does not verify the connection.
+	 *
+	 * @return
+	 * 			true if connection is successful else false.
+	 */
+	public boolean isConnected() {
+		try {
+			this.restApi.get(new GetRequest("/"));
+			return true;
+		}
+		catch(Exception ex) {
+			return false;
+		}
 	}
 
     /**
@@ -578,7 +603,14 @@ public class RallyClient {
         return jsonObject.get("_ref").toString();
     }
 
-    public JsonObject getWorkspaceObject(String workspace) throws IOException {
+	public JsonObject getSubscriptionObject() throws IOException {
+		QueryRequest subscriptionRequest = new QueryRequest("Subscriptions");
+		subscriptionRequest.setFetch(new Fetch("Name", "SubscriptionID", "Workspaces"));
+		QueryResponse subscriptionQueryResponse = restApi.query(subscriptionRequest);
+		return subscriptionQueryResponse.getResults().get(0).getAsJsonObject();
+	}
+
+	public JsonObject getWorkspaceObject(String workspace) throws IOException {
         QueryRequest workspaceRequest = new QueryRequest("Workspace");
         workspaceRequest.setFetch(new Fetch("Name", "Owner", "Projects"));
         workspaceRequest.setQueryFilter(new QueryFilter("Name", "=", workspace));
