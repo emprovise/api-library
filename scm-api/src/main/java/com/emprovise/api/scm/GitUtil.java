@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -27,11 +28,7 @@ import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -140,13 +137,11 @@ public class GitUtil extends ScmUtil {
 	 * Also it sets up credentials using the SSH private key file and the provided passphrase.
 	 * @param directory
 	 * 		{@link File} representing the Existing Repository directory.
-	 * @param privatekey
+	 * @param privateKey
 	 * 		{@link File} containing SSH private key.
 	 * @param passphrase
 	 * 		{@link String} passphrase for authentication of private key.
-	 * @param remoteUrl
-	 * 		{@link String} URL to the remote git repository.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public GitUtil(File directory, File privateKey, String passphrase) throws IOException {
 		super();
@@ -173,7 +168,7 @@ public class GitUtil extends ScmUtil {
 	 * authorization information, then git configuration 'gitrc' must be initialized. If gitrc
 	 * is not initialized the pull from secured repository will return 'no changes' regardless. 
 	 * @return Output log
-	 * 		{@link Output} containing number of changesets pulled from remote repository. 
+	 * 		{@link String} containing number of changesets pulled from remote repository.
 	 * @throws IOException
 	 * @throws GitAPIException 
 	 * @throws NoFilepatternException 
@@ -192,7 +187,7 @@ public class GitUtil extends ScmUtil {
 	 * @param doClean 
 	 * 		It enables to remove all the uncommitted and unversioned files 
 	 * @return Output log
-	 * 		{@link Output} containing updated changeset. 
+	 * 		{@link String} containing updated changeset.
 	 * @throws IOException
 	 * @throws GitAPIException  
 	 */
@@ -411,7 +406,7 @@ public class GitUtil extends ScmUtil {
 	
 	/**
 	 * Add a Tag on the current changeset with the specified tagName.
-	 * @param tagNames
+	 * @param tagName
 	 * 		{@link String} containing the tag name to be added.
 	 * @throws GitAPIException    
 	 */
@@ -601,6 +596,17 @@ public class GitUtil extends ScmUtil {
 
 	public void revertAllTags() throws IOException {
 		FileUtils.cleanDirectory(new File(repository.getDirectory(), Constants.R_TAGS)); 
+	}
+
+	public String getScmUrl() {
+		Config storedConfig = repository.getConfig();
+		Set<String> remotes = storedConfig.getSubsections("remote");
+
+		if(remotes!=null && !remotes.isEmpty()) {
+			return storedConfig.getString("remote", remotes.iterator().next(), "url");
+		}
+
+		return null;
 	}
 	
 	private static void setSessionFactory(JschConfigSessionFactory sessionFactory) {
