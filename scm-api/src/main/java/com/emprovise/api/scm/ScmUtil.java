@@ -176,7 +176,7 @@ public abstract class ScmUtil {
 	
 	/**
 	 * Reads the default remote repository url from the hgrc file in the .hg directory.
-	 * @param repoDir
+	 * @param repository
 	 * 		{@link File} representing the .hg directory of the current project.
 	 * @return
 	 * 		{@link String} containing the remote mercurial repository url. 

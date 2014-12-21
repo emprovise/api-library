@@ -126,7 +126,7 @@ public class HgUtil extends ScmUtil {
 	 * Creates a new HgUtil Object using a {@link Repository} object
 	 * @param repository
 	 * 		A {@link Repository} object which is created from existing repository path or 
-	 * 		by using the {@link clone} method
+	 * 		by using the clone method
 	 * @param hgrc
 	 * 		A {@link File} object containing mercurial repository configuration.
 	 */
@@ -141,7 +141,7 @@ public class HgUtil extends ScmUtil {
 	 * authorization information, then mercurial configuration 'hgrc' must be initialized. If hgrc
 	 * is not initialized the pull from secured repository will return 'no changes' regardless. 
 	 * @return Output log
-	 * 		{@link Output} containing number of changesets pulled from remote repository. 
+	 * 		{@link String} containing number of changesets pulled from remote repository.
 	 * @throws IOException
 	 */
 	public String pull() throws Exception {
@@ -163,7 +163,7 @@ public class HgUtil extends ScmUtil {
 	 * @param doClean 
 	 * 		It enables to remove all the uncommitted and unversioned files 
 	 * @return Output log
-	 * 		{@link Output} containing updated changeset. 
+	 * 		{@link String} containing updated changeset.
 	 * @throws IOException
 	 */
 	public String update(String node, boolean doClean) throws IOException {
@@ -419,7 +419,7 @@ public class HgUtil extends ScmUtil {
 	
 	/**
 	 * Add a Tag on the current changeset with the specified tagName.
-	 * @param tagNames
+	 * @param tagName
 	 * 		{@link String} containing the tag name to be added.
 	 */
 	public void tag(String user, String tagName) {
@@ -558,7 +558,7 @@ public class HgUtil extends ScmUtil {
 		}
 		return fileString;
 	}
-	
+
 
 	public void revertAllTags() throws IOException {
 		File tags = new File(".hgtags");
