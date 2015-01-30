@@ -25,9 +25,9 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.emprovise.api.rally.param.Param.*;
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
-import static com.emprovise.api.rally.param.Param.*;
 
 /**
  * Rally Client uses the Rally Rest Services to create, fetch and update Rally items.
@@ -242,9 +242,12 @@ public class RallyClient {
 			}
 			
 			if(isComplete) {
-				JsonArray jsonArray = rallyObject.getAsJsonArray("Children");
-				if(jsonArray!=null && jsonArray.size() > 0) {
-					isComplete = false;
+				JsonElement children = rallyObject.get("Children");
+				if(children!=null && children.isJsonArray()) {
+					JsonArray jsonArray = rallyObject.getAsJsonArray("Children");
+					if (jsonArray != null && jsonArray.size() > 0) {
+						isComplete = false;
+					}
 				}
 			}
 		}
