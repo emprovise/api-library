@@ -219,7 +219,7 @@ public class RallyClient {
 		
 		if(rallyObject.get("_type").getAsString().equals("Defect")) { 
 			
-			if(message.toLowerCase().contains("fix") ) {
+			if(message.toLowerCase().startsWith("fix") ) {
 				isFixed = true;
 			}
 			
@@ -231,7 +231,7 @@ public class RallyClient {
 		}
 		else if(rallyObject.get("_type").getAsString().equals("HierarchicalRequirement")) {
 			
-			if(message.toLowerCase().contains("complete") ) {
+			if(message.toLowerCase().startsWith("complete") ) {
 				isComplete = true;
 			}
 
