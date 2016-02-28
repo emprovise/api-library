@@ -1,0 +1,24 @@
+package com.emprovise.api.util;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.util.Properties;
+
+public class PropertiesUtil {
+
+    public static Properties loadProperties(String propsName) throws IOException {
+        Properties props = new Properties();
+        URL url = ClassLoader.getSystemResource(propsName);
+        props.load(url.openStream());
+        return props;
+    }
+
+    public static void writeProperties(String propsName, Properties properties) throws IOException {
+        File file = new File(propsName);
+        FileOutputStream fileOut = new FileOutputStream(file);
+        properties.store(fileOut, "Favorite Things");
+        fileOut.close();
+    }
+}

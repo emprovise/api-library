@@ -17,6 +17,7 @@
 		<module>rally-api</module>
 		<module>campfire-api</module>
 		<module>soapui-api</module>
+		<module>socialmedia-api</module>
 	</modules>
 
 	<build>
