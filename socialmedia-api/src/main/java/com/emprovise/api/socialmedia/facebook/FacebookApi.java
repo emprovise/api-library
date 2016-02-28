@@ -6,6 +6,7 @@ import facebook4j.*;
 import facebook4j.auth.*;
 import facebook4j.conf.Configuration;
 import facebook4j.conf.ConfigurationBuilder;
+import org.apache.commons.lang.StringUtils;
 
 import java.awt.*;
 import java.io.IOException;
@@ -28,7 +29,6 @@ import java.util.stream.Collectors;
 public class FacebookApi {
 
     private Facebook facebook;
-    public final static String DEFAULT_ACCESS = "email,manage_pages,publish_pages,publish_actions,read_stream";
     public static final SimpleDateFormat DATE_FORMATTER = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     public FacebookApi() {
@@ -36,22 +36,42 @@ public class FacebookApi {
     }
 
     public FacebookApi(String appId, String appSecret) throws FacebookException {
-
-        Configuration configuration =  createConfiguration(appId, appSecret);
+        Configuration configuration =  createConfiguration(appId, appSecret, null);
         FacebookFactory facebookFactory = new FacebookFactory(configuration );
         facebook = facebookFactory.getInstance();
     }
 
     public FacebookApi(String appId, String appSecret, String token) throws FacebookException {
+        this(appId, appSecret, token, null);
+    }
+
+    public FacebookApi(String[] permissions) {
+        facebook = new FacebookFactory().getInstance();
+        String permissionList = StringUtils.join(permissions, ',');
+        facebook.setOAuthPermissions(permissionList);
+    }
+
+    public FacebookApi(String appId, String appSecret, String[] permissions) throws FacebookException {
+        String permissionList = StringUtils.join(permissions, ',');
+        Configuration configuration =  createConfiguration(appId, appSecret, permissionList);
+        FacebookFactory facebookFactory = new FacebookFactory(configuration );
+        facebook = facebookFactory.getInstance();
+    }
+
+    public FacebookApi(String appId, String appSecret, String token, String[] permissions) throws FacebookException {
 
         facebook = new FacebookFactory().getInstance();
         facebook.setOAuthAppId(appId, appSecret);
-        facebook.setOAuthPermissions(DEFAULT_ACCESS);
         AccessToken accessToken = new AccessToken(token);
         facebook.setOAuthAccessToken(accessToken);
+
+        if(permissions != null) {
+            String permissionList = StringUtils.join(permissions, ',');
+            facebook.setOAuthPermissions(permissionList);
+        }
     }
 
-    public Configuration createConfiguration(String appId, String appSecret) {
+    public Configuration createConfiguration(String appId, String appSecret, String permissions) {
         ConfigurationBuilder confBuilder = new ConfigurationBuilder();
 
         confBuilder.setDebugEnabled(true);
@@ -59,7 +79,7 @@ public class FacebookApi {
         confBuilder.setOAuthAppSecret(appSecret);
         confBuilder.setUseSSL(true);
         confBuilder.setJSONStoreEnabled(true);
-        confBuilder.setOAuthPermissions(DEFAULT_ACCESS);
+        confBuilder.setOAuthPermissions(permissions);
         //confBuilder.setOAuthAccessToken(ACCESS_TOKEN);
         //confBuilder.setRestBaseURL("https://graph.facebook.com/v2.3/");
 
@@ -124,20 +144,23 @@ public class FacebookApi {
         facebook.postStatusMessage(message);
     }
 
-    public static FacebookApi getFacebookApi(String appId, String appSecret) throws IOException, FacebookException, ParseException, URISyntaxException {
+    public static FacebookApi getFacebookApi(String appId, String appSecret, String... permissions) throws IOException, FacebookException, ParseException, URISyntaxException {
 
         Properties properties = PropertiesUtil.loadProperties("facebook4j.properties");
         String appIdProperty = properties.getProperty("oauth.appId");
         String appSecretProperty = properties.getProperty("oauth.appSecret");
+        String permissionsProperty = properties.getProperty("oauth.appSecret");
 
-        if(appIdProperty == null || appIdProperty.trim().isEmpty() || appSecretProperty == null || appSecretProperty.trim().isEmpty()) {
+        if(appIdProperty == null || appIdProperty.trim().isEmpty() || appSecretProperty == null || appSecretProperty.trim().isEmpty() ||
+           permissionsProperty == null || permissionsProperty.trim().isEmpty()) {
+
             properties.setProperty("oauth.appId", appId);
             properties.setProperty("oauth.appSecret", appSecret);
             PropertiesUtil.writeProperties("facebook4j.properties", properties);
         }
 
         long diffMinutes = 60;
-        FacebookApi api = new FacebookApi();
+        FacebookApi api = new FacebookApi(permissions);
 
         String lastUpdatedDate = properties.getProperty("lastupdate");
         if(lastUpdatedDate != null && !lastUpdatedDate.isEmpty()) {
@@ -166,11 +189,5 @@ public class FacebookApi {
         }
 
         return api;
-    }
-
-    public static void main(String[] args) throws FacebookException, URISyntaxException, IOException, InterruptedException, ParseException {
-        FacebookApi api = getFacebookApi("1443587099281370", "1f9ac84683026158e487eba33508de20");
-        List<Post> posts = api.searchPosts("obama");
-        System.out.println(posts);
     }
 }

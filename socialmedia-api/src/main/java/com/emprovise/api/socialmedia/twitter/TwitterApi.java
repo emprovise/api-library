@@ -249,12 +249,4 @@ public class TwitterApi {
 
         return api;
     }
-
-    public static void main(String args[]) throws Exception{
-        TwitterApi api = TwitterApi.getTwitterApi("E4ZYGRVKa3Bd3Yv9Br6Sk0DFs", "KlyGHlgSODqI9TjfkuseiENfLWWYXzlYsi2wXXCGYEQkbQNTxP");
-        List<Status> allStatuses = api.searchTweets("Steve");
-        for (Status status : allStatuses) {
-            System.out.println(status);
-        }
-    }
 }
