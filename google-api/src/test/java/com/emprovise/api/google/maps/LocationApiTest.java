@@ -2,15 +2,20 @@ package com.emprovise.api.google.maps;
 
 import org.junit.Test;
 
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 public class LocationApiTest {
 
     @Test
-    public void abc() throws Exception {
+    public void placeAutocomplete() throws Exception {
 
-        LocationApi distanceApi = new LocationApi("AIzaSyC4zfRGxXh_woOwkbM2As2WosQ3IpRG8yg");
-        String abc = distanceApi.abc("Perth, Australia");
-        System.out.println(abc);
+        LocationApi distanceApi = new LocationApi("GOOGLE_API_KEY");
+        List<String> results = distanceApi.placeAutocomplete("Perth, Australia");
+
+        assertFalse(results.isEmpty());
+        assertEquals(5, results.size());
+        System.out.println(results);
     }
 }
