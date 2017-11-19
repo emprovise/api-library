@@ -20,6 +20,7 @@
 		<module>socialmedia-api</module>
 		<module>google-api</module>
 		<module>microsoft-api</module>
+		<module>amazon-api</module>
 	</modules>
 
 	<build>
