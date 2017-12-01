@@ -18,7 +18,7 @@ public class MapApi {
                         .build();
     }
 
-    public GeoApiContext getApiContext() {
+    protected GeoApiContext getApiContext() {
         return apiContext;
     }
 }
