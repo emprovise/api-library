@@ -1,7 +1,7 @@
 package com.emprovise.api.rally;
 
 import com.emprovise.api.rally.exception.RallyConcurrencyConflictException;
-import com.emprovise.api.rally.param.*;
+import com.emprovise.api.rally.type.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -25,7 +25,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.emprovise.api.rally.param.Param.*;
+import static com.emprovise.api.rally.type.Param.*;
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.trim;
 
@@ -404,7 +404,6 @@ public class RallyClient {
 				}
 			}
 			
-//			request.setQueryFilter(new QueryFilter("State", "<", "Fixed"));
 			QueryResponse queryResponse = restApi.query(request);
 
 			if (queryResponse.wasSuccessful()) {
@@ -429,25 +428,18 @@ public class RallyClient {
 				throw new RuntimeException("Rally Response Failed: <br /> \n " + exception);
 			}
 		}
-		
 		return null;
-    }
+	}
 
 	private String getObjectType(String rallyIdentifier) {
 
 		rallyIdentifier = rallyIdentifier.toUpperCase();
+		Identifier identifier = Identifier.getIdentifierByPrefix(rallyIdentifier.substring(0, 2));
 
-		if(rallyIdentifier.startsWith("US")) {
-            return "HierarchicalRequirement";
-        }
-		else if(rallyIdentifier.startsWith("DE")) {
-			return "Defect";
-		}
-        else if(rallyIdentifier.startsWith("TA")) {
-			return "Task";
-        }
-		else if(rallyIdentifier.startsWith("TC")) {
-			return "TestCase";
+		if(identifier != null) {
+			return identifier.objectType();
+		} else if(rallyIdentifier.startsWith("F")) {
+			return Identifier.FEATURE.objectType();
 		}
 
 		return null;
@@ -829,5 +821,276 @@ public class RallyClient {
 
     public static String generateRallySearchUrl(String rallyIdentifier) {
 		return format("%s/slm/rally.sp#/search?keywords=%s", RALLY_HOST, rallyIdentifier);
+	}
+
+	public JsonArray getWorkspaces() throws IOException {
+		QueryRequest workspaceRequest = new QueryRequest("Workspace");
+		workspaceRequest.setFetch(new Fetch("CreationDate",
+				"ObjectID",
+				"Children",
+				"Description",
+				"Name",
+				"Notes",
+				"Owner",
+				"Projects",
+				"State",
+				"Style"));
+
+		QueryResponse workspaceQueryResponse = restApi.query(workspaceRequest);
+		return cleanupJsonArray(workspaceQueryResponse.getResults());
+	}
+
+	public String getWorkspaceRef(String workspace) throws IOException {
+		QueryRequest workspaceRequest = new QueryRequest("Workspace");
+		workspaceRequest.setFetch(new Fetch("ObjectID"));
+		workspaceRequest.setQueryFilter(new QueryFilter("Name", "=", workspace));
+		QueryResponse workspaceQueryResponse = restApi.query(workspaceRequest);
+
+		if(workspaceQueryResponse.getResults().size() < 1) {
+			throw new RuntimeException(String.format("No workspace named '%s' found", workspace));
+		}
+
+		JsonObject jsonObject = workspaceQueryResponse.getResults().get(0).getAsJsonObject();
+		return "/workspace/" + jsonObject.get("ObjectID").toString();
+	}
+
+	public JsonArray getMilestones(String workspace) throws IOException {
+		QueryRequest  milestoneRequest = new QueryRequest("Milestone");
+		milestoneRequest.setWorkspace(getWorkspaceRef(workspace));
+		QueryResponse milestoneResponse = restApi.query(milestoneRequest);
+		return cleanupJsonArray(milestoneResponse.getResults());
+	}
+
+	public JsonArray getProjects(String workspace) throws IOException {
+		QueryRequest projectRequest = new QueryRequest("Project");
+		projectRequest.setFetch(new Fetch("CreationDate",
+				"ObjectID",
+				"BuildDefinitions",
+				"Children",
+				"Description",
+				"Editors",
+				"Iterations",
+				"Name",
+				"Notes",
+				"Owner",
+				"Parent",
+				"Releases",
+				"State",
+				"TeamMembers",
+				"Viewers"));
+
+		projectRequest.setWorkspace(getWorkspaceRef(workspace));
+		QueryResponse projectQueryResponse = restApi.query(projectRequest);
+		return cleanupJsonArray(projectQueryResponse.getResults());
+	}
+
+	public String getProjectRef(String project) throws IOException {
+		QueryRequest projectRequest = new QueryRequest("Project");
+		projectRequest.setFetch(new Fetch("ObjectID"));
+		projectRequest.setQueryFilter(new QueryFilter("Name", "=", project));
+		QueryResponse projectQueryResponse = restApi.query(projectRequest);
+
+		if(projectQueryResponse.getResults().size() < 1) {
+			throw new RuntimeException(String.format("No project named '%s' found", project));
+		}
+
+		JsonObject jsonObject = projectQueryResponse.getResults().get(0).getAsJsonObject();
+		return "/project/" + jsonObject.get("ObjectID").toString();
+	}
+
+	public JsonArray getReleases(String project) throws IOException {
+
+		QueryRequest  releaseRequest = new QueryRequest("Release");
+		releaseRequest.setFetch(new Fetch("CreationDate",
+				"ObjectID",
+				"Accepted",
+				"GrossEstimateConversionRatio",
+				"Name",
+				"PlanEstimate",
+				"PlannedVelocity",
+				"ReleaseDate",
+				"ReleaseStartDate",
+				"State",
+				"TaskActualTotal",
+				"TaskEstimateTotal",
+				"TaskRemainingTotal"));
+
+		releaseRequest.setScopedDown(false);
+		releaseRequest.setScopedUp(false);
+		releaseRequest.setProject(getProjectRef(project));
+		QueryResponse releaseQueryResponse = restApi.query(releaseRequest);
+		return cleanupJsonArray(releaseQueryResponse.getResults());
+	}
+
+	public JsonArray getIterations(String project, String startDate, String endDate) throws IOException {
+
+		QueryRequest  iterationRequest = new QueryRequest("Iteration");
+		iterationRequest.setFetch(new Fetch("CreationDate",
+				"ObjectID",
+				"EndDate",
+				"Name",
+				"PlanEstimate",
+				"PlannedVelocity",
+				"StartDate",
+				"State",
+				"TaskActualTotal",
+				"TaskEstimateTotal",
+				"TaskRemainingTotal",
+				"UserIterationCapacities"));
+
+		iterationRequest.setScopedDown(false);
+		iterationRequest.setScopedUp(false);
+		iterationRequest.setProject(getProjectRef(project));
+
+		if(StringUtils.isNotBlank(startDate) && StringUtils.isNotBlank(endDate)) {
+			QueryFilter queryFilter = new QueryFilter("StartDate", ">=", startDate).and(new QueryFilter("EndDate", "<=", endDate));
+			iterationRequest.setQueryFilter(queryFilter);
+		}
+
+		QueryResponse iterationResponse = restApi.query(iterationRequest);
+		return cleanupJsonArray(iterationResponse.getResults());
+	}
+
+	public JsonArray getRallyObjects(Identifier identifier, String project, String iteration, String startDate, String endDate) throws IOException {
+		QueryRequest rallyRequest = new QueryRequest(identifier.objectType());
+		rallyRequest.setFetch(new Fetch("CreationDate",
+				"ObjectID",
+				"Workspace",
+				"Changesets",
+				"FormattedID",
+				"LastUpdateDate",
+				"Name",
+				"Owner",
+				"Project",
+				"Ready",
+				"Tags",
+				"FlowState",
+				"ScheduleState",
+				"TestCaseCount",
+				"AcceptedDate",
+				"Blocked",
+				"BlockedReason",
+				"Blocker",
+				"Children",
+				"DefectStatus",
+				"Defects",
+				"DirectChildrenCount",
+				"HasParent",
+				"InProgressDate",
+				"Iteration",
+				"Parent",
+				"PlanEstimate",
+				"Recycled",
+				"Release",
+				"TaskActualTotal",
+				"TaskEstimateTotal",
+				"TaskRemainingTotal",
+				"TaskStatus",
+				"Tasks"));
+
+		rallyRequest.setLimit(25000);
+		rallyRequest.setScopedDown(true);
+		rallyRequest.setScopedUp(false);
+
+		QueryFilter queryFilter = new QueryFilter("Project.Name", "=", project);
+
+		if(StringUtils.isNotBlank(startDate)) {
+			queryFilter.and(new QueryFilter("Iteration.Name", "=", iteration));
+		}
+
+		if(StringUtils.isNotBlank(startDate) && StringUtils.isNotBlank(endDate)) {
+			queryFilter = queryFilter.and(new QueryFilter("Iteration.StartDate", ">=", startDate))
+					.and(new QueryFilter("Iteration.EndDate", "<=", endDate));
+		}
+
+		rallyRequest.setQueryFilter(queryFilter);
+
+		QueryResponse projectQueryResponse = restApi.query(rallyRequest);
+		JsonArray results = projectQueryResponse.getResults();
+
+		for (JsonElement element : results) {
+			JsonObject jsonObject = element.getAsJsonObject();
+			Map<String, String> addProperties = new LinkedHashMap<>();
+			List<String> removeProperties = new ArrayList<>();
+
+			for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+				String property = entry.getKey();
+				JsonElement jsonElement = entry.getValue();
+
+				if(jsonElement != null && jsonElement.isJsonObject()) {
+					JsonObject json = jsonElement.getAsJsonObject();
+
+					JsonElement objectName = json.get("_refObjectName");
+					if(objectName != null) {
+						addProperties.put(property + ".Name", objectName.getAsString());
+					}
+
+					JsonElement count = json.get("Count");
+					if(count != null) {
+						addProperties.put(property + ".Count", count.getAsString());
+					}
+
+					removeProperties.add(property);
+				}
+			}
+
+			removeProperties.forEach(removeProperty -> jsonObject.remove(removeProperty));
+			addProperties.forEach((k,v)->{
+				jsonObject.addProperty(k,v);
+			});
+
+			removeRallyReferenceFields(jsonObject);
+		}
+
+		return results;
+	}
+
+	public JsonArray attachResultsByReference(JsonArray jsonArray, String property) throws IOException {
+
+		for (JsonElement element : jsonArray) {
+			JsonObject jsonObject = element.getAsJsonObject();
+			JsonObject jsonObjectReference = null;
+
+			for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+				JsonElement jsonElement = entry.getValue();
+
+				if(jsonElement != null && jsonElement.isJsonObject() && entry.getKey().equalsIgnoreCase(property)) {
+					jsonObjectReference = entry.getValue().getAsJsonObject();
+					break;
+				}
+			}
+
+			if(jsonObjectReference != null) {
+				jsonObject.remove(property);
+				jsonObject.add(property, getResults(jsonObjectReference));
+			}
+		}
+
+
+		return jsonArray;
+	}
+
+	private JsonArray getResults(JsonObject jsonObject) throws IOException {
+		QueryRequest queryRequest = new QueryRequest(jsonObject);
+		JsonArray results = restApi.query(queryRequest).getResults();
+		return cleanupJsonArray(results);
+	}
+
+	private JsonArray cleanupJsonArray(JsonArray results) {
+		for (JsonElement element : results) {
+			removeRallyReferenceFields(element.getAsJsonObject());
+		}
+
+		return results;
+	}
+
+	private void removeRallyReferenceFields(JsonObject jsonObject) {
+		jsonObject.remove("_rallyAPIMajor");
+		jsonObject.remove("_rallyAPIMinor");
+		jsonObject.remove("_ref");
+		jsonObject.remove("_refObjectUUID");
+		jsonObject.remove("_objectVersion");
+		jsonObject.remove("_refObjectName");
+		jsonObject.remove("_CreatedAt");
 	}
 }
