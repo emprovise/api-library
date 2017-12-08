@@ -1,4 +1,4 @@
-package com.emprovise.api.rally.param;
+package com.emprovise.api.rally.type;
 
 public enum Param {
     NAME("Name"),
