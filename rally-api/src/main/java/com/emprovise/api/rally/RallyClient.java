@@ -13,7 +13,7 @@ import com.rallydev.rest.response.*;
 import com.rallydev.rest.util.Fetch;
 import com.rallydev.rest.util.QueryFilter;
 import com.rallydev.rest.util.Ref;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ParseException;
 
 import java.io.IOException;
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 import static com.emprovise.api.rally.type.Param.*;
 import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.trim;
+import static org.apache.commons.lang3.StringUtils.trim;
 
 /**
  * Rally Client uses the Rally Rest Services to create, fetch and update Rally items.
