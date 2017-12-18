@@ -6,6 +6,8 @@ import java.util.Optional;
 public enum Identifier {
 
     FEATURE("F", "PortfolioItem/Feature", "feature", "features"),
+    INITIATIVE("I", "PortfolioItem/Initiative", "initiative", "initiatives"),
+    PARENT_FEATURE("P", "PortfolioItem/ParentFeature", "parentfeature", "parentfeatures"),
     USER_STORY("US", "HierarchicalRequirement", "userstory", "userstories"),
     DEFECT("DE", "Defect", "defect", "defects"),
     TASK("TA", "Task", "task", "tasks"),
