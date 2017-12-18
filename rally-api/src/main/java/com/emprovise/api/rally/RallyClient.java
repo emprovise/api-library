@@ -13,6 +13,7 @@ import com.rallydev.rest.response.*;
 import com.rallydev.rest.util.Fetch;
 import com.rallydev.rest.util.QueryFilter;
 import com.rallydev.rest.util.Ref;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ParseException;
 
@@ -51,6 +52,8 @@ public class RallyClient {
 	 * Create and configure a new instance of RallyRestApi
 	 */
 	private RallyDefaultRestApi restApi = null;
+
+	private static String[] DEFAULT_CLEANUP_VALUES = {"_rallyAPIMajor", "_rallyAPIMinor", "_ref", "_refObjectUUID", "_objectVersion", "_refObjectName", "_CreatedAt"};
 
 	/**
 	 * Initializes the Rally API by establishing a connection with the Rally Server using rally credentials
@@ -855,7 +858,7 @@ public class RallyClient {
 	}
 
 	public JsonArray getMilestones(String workspace) throws IOException {
-		QueryRequest  milestoneRequest = new QueryRequest("Milestone");
+		QueryRequest milestoneRequest = new QueryRequest("Milestone");
 		milestoneRequest.setWorkspace(getWorkspaceRef(workspace));
 		QueryResponse milestoneResponse = restApi.query(milestoneRequest);
 		return cleanupJsonArray(milestoneResponse.getResults());
@@ -890,7 +893,7 @@ public class RallyClient {
 		projectRequest.setQueryFilter(new QueryFilter("Name", "=", project));
 		QueryResponse projectQueryResponse = restApi.query(projectRequest);
 
-		if(projectQueryResponse.getResults().size() < 1) {
+		if (projectQueryResponse.getResults().size() < 1) {
 			throw new RuntimeException(String.format("No project named '%s' found", project));
 		}
 
@@ -951,8 +954,8 @@ public class RallyClient {
 		return cleanupJsonArray(iterationResponse.getResults());
 	}
 
-	public JsonArray getRallyObjects(Identifier identifier, String project, String iteration, String startDate, String endDate) throws IOException {
-		QueryRequest rallyRequest = new QueryRequest(identifier.objectType());
+	public JsonArray getRallyObjects(Identifier rallyIdentifier, String workspace, String project, String iteration, String startDate, String endDate) throws IOException {
+		QueryRequest rallyRequest = new QueryRequest(rallyIdentifier.objectType());
 		rallyRequest.setFetch(new Fetch("CreationDate",
 				"ObjectID",
 				"Workspace",
@@ -992,23 +995,34 @@ public class RallyClient {
 		rallyRequest.setScopedDown(true);
 		rallyRequest.setScopedUp(false);
 
-		QueryFilter queryFilter = new QueryFilter("Project.Name", "=", project);
+		if(workspace != null) {
+			rallyRequest.setWorkspace(getWorkspaceRef(workspace));
+		}
+
+		List<QueryFilter> queryFilters = new ArrayList<>();
+
+		if(project != null) {
+			queryFilters.add(new QueryFilter("Project.Name", "=", project));
+		}
 
 		if(StringUtils.isNotBlank(startDate)) {
-			queryFilter.and(new QueryFilter("Iteration.Name", "=", iteration));
+			queryFilters.add(new QueryFilter("Iteration.Name", "=", iteration));
 		}
 
 		if(StringUtils.isNotBlank(startDate) && StringUtils.isNotBlank(endDate)) {
-			queryFilter = queryFilter.and(new QueryFilter("Iteration.StartDate", ">=", startDate))
-					.and(new QueryFilter("Iteration.EndDate", "<=", endDate));
+			queryFilters.add(new QueryFilter("Iteration.StartDate", ">=", startDate));
+			queryFilters.add(new QueryFilter("Iteration.EndDate", "<=", endDate));
 		}
 
-		rallyRequest.setQueryFilter(queryFilter);
+		rallyRequest.setQueryFilter(QueryFilter.and(queryFilters.toArray(new QueryFilter[queryFilters.size()])));
 
 		QueryResponse projectQueryResponse = restApi.query(rallyRequest);
-		JsonArray results = projectQueryResponse.getResults();
+		return cleanupJsonArray(projectQueryResponse.getResults(), "Workspace", "Changesets");
+	}
 
-		for (JsonElement element : results) {
+	public JsonArray summarize(JsonArray elements) {
+
+		for (JsonElement element : elements) {
 			JsonObject jsonObject = element.getAsJsonObject();
 			Map<String, String> addProperties = new LinkedHashMap<>();
 			List<String> removeProperties = new ArrayList<>();
@@ -1038,36 +1052,39 @@ public class RallyClient {
 			addProperties.forEach((k,v)->{
 				jsonObject.addProperty(k,v);
 			});
-
-			removeRallyReferenceFields(jsonObject);
 		}
 
-		return results;
+		return elements;
 	}
 
-	public JsonArray attachResultsByReference(JsonArray jsonArray, String property) throws IOException {
+	public JsonArray attachResultsByReference(JsonArray jsonArray, String... properties) throws IOException {
 
 		for (JsonElement element : jsonArray) {
 			JsonObject jsonObject = element.getAsJsonObject();
-			JsonObject jsonObjectReference = null;
-
-			for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
-				JsonElement jsonElement = entry.getValue();
-
-				if(jsonElement != null && jsonElement.isJsonObject() && entry.getKey().equalsIgnoreCase(property)) {
-					jsonObjectReference = entry.getValue().getAsJsonObject();
-					break;
-				}
-			}
-
-			if(jsonObjectReference != null) {
-				jsonObject.remove(property);
-				jsonObject.add(property, getResults(jsonObjectReference));
+			for (String property : properties) {
+				attachResultsByReference(jsonObject, property);
 			}
 		}
 
-
 		return jsonArray;
+	}
+
+	private void attachResultsByReference(JsonObject jsonObject, String property) throws IOException {
+		JsonObject jsonObjectReference = null;
+
+		for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+			JsonElement jsonElement = entry.getValue();
+
+			if(jsonElement != null && jsonElement.isJsonObject() && entry.getKey().equalsIgnoreCase(property)) {
+				jsonObjectReference = entry.getValue().getAsJsonObject();
+				break;
+			}
+		}
+
+		if(jsonObjectReference != null) {
+			jsonObject.remove(property);
+			jsonObject.add(property, getResults(jsonObjectReference));
+		}
 	}
 
 	private JsonArray getResults(JsonObject jsonObject) throws IOException {
@@ -1076,21 +1093,24 @@ public class RallyClient {
 		return cleanupJsonArray(results);
 	}
 
-	private JsonArray cleanupJsonArray(JsonArray results) {
+	private JsonArray cleanupJsonArray(JsonArray results, String... removeValues) {
+
+		if(removeValues == null || removeValues.length < 1) {
+			removeValues = DEFAULT_CLEANUP_VALUES;
+		} else {
+			removeValues = ArrayUtils.addAll(DEFAULT_CLEANUP_VALUES, removeValues);
+		}
+
 		for (JsonElement element : results) {
-			removeRallyReferenceFields(element.getAsJsonObject());
+			removeRallyReferenceFields(element.getAsJsonObject(), removeValues);
 		}
 
 		return results;
 	}
 
-	private void removeRallyReferenceFields(JsonObject jsonObject) {
-		jsonObject.remove("_rallyAPIMajor");
-		jsonObject.remove("_rallyAPIMinor");
-		jsonObject.remove("_ref");
-		jsonObject.remove("_refObjectUUID");
-		jsonObject.remove("_objectVersion");
-		jsonObject.remove("_refObjectName");
-		jsonObject.remove("_CreatedAt");
+	private void removeRallyReferenceFields(JsonObject jsonObject, String... removeValues) {
+		for (String removeValue : removeValues) {
+			jsonObject.remove(removeValue);
+		}
 	}
 }
