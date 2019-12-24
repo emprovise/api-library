@@ -5,5 +5,4 @@ The API Library is a diverse set of implmentations for accessing various service
 
 * [Rally API](rally-api/README.md) enables accessing [Rally software](https://www.rallydev.com/), an Agile management enterprise platform.
 + [Source Control Management API](scm-api/README.md) helps to manage various source control repositories such as Git and Mercurial.
-+ SOAPUI API provides an ability to create mockservices, call webservices using a virtual SOAPUI instance.
 + [Social Media API](socialmedia-api/README.md) provides API's to access social media services such as Facebook and Twitter.
