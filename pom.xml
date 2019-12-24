@@ -15,7 +15,6 @@
 	<modules>
 		<module>scm-api</module>
 		<module>rally-api</module>
-		<module>soapui-api</module>
 		<module>socialmedia-api</module>
 		<module>google-api</module>
 		<module>microsoft-api</module>
