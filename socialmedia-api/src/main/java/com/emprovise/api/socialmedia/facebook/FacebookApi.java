@@ -6,7 +6,7 @@ import facebook4j.*;
 import facebook4j.auth.*;
 import facebook4j.conf.Configuration;
 import facebook4j.conf.ConfigurationBuilder;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.awt.*;
 import java.io.IOException;

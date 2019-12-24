@@ -400,7 +400,7 @@ public class GitUtil extends ScmUtil {
 	 * @throws IOException 
 	 */
 	public String getCurrentChangeSet() throws IOException {
-		Ref head = repository.getRef(Constants.HEAD);
+		Ref head = repository.exactRef(Constants.HEAD);
 		return head.getObjectId().getName();
 	}
 	

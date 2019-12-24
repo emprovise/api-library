@@ -19,7 +19,7 @@ public class LocationApi extends MapApi {
     }
 
     public List<String> placeAutocomplete(String place) throws Exception {
-        AutocompletePrediction[] predictions = PlacesApi.placeAutocomplete(getApiContext(), place).await();
+        AutocompletePrediction[] predictions = PlacesApi.placeAutocomplete(getApiContext(), place, null).await();
         List<AutocompletePrediction> autocompletePredictions = Arrays.asList(predictions);
         return autocompletePredictions.stream()
                                       .map(result -> result.description)

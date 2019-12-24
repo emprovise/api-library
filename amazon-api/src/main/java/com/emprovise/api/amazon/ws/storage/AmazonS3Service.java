@@ -9,11 +9,9 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.amazonaws.util.IOUtils;
+import com.emprovise.api.dto.AWSFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.List;
 
 /**
@@ -70,6 +68,11 @@ public class AmazonS3Service {
         return objects.getObjectSummaries();
     }
 
+    public List<S3ObjectSummary> listAllObjectsV2(String bucketName) {
+        ListObjectsV2Result listObjectsV2Result = amazonS3.listObjectsV2(bucketName);
+        return listObjectsV2Result.getObjectSummaries();
+    }
+
     public void createDirectory(String bucketName, String directoryName) {
         // create meta-data for your directory and set content-length to 0
         ObjectMetadata metadata = new ObjectMetadata();
@@ -97,16 +100,23 @@ public class AmazonS3Service {
         amazonS3.deleteObject(bucketName, directoryName);
     }
 
-    public void uploadFile(String bucketName, String destinationPath, File targetFile) {
-        amazonS3.putObject(new PutObjectRequest(bucketName, destinationPath, targetFile)
+    public ObjectMetadata uploadFile(String bucketName, String destinationPath, File targetFile) {
+        PutObjectResult putObjectResult = amazonS3.putObject(new PutObjectRequest(bucketName, destinationPath, targetFile)
                 .withCannedAcl(CannedAccessControlList.PublicRead));
+        return putObjectResult.getMetadata();
     }
 
-    public byte[] getFileBytes(String bucketName, String fileKey) throws IOException {
+    public void updateFile(String bucketName, String destinationPath, File targetFile, ObjectMetadata objectMetadata) throws IOException {
+        byte[] fileBytes = IOUtils.toByteArray(new FileInputStream(targetFile));
+        InputStream fileStream = new ByteArrayInputStream(fileBytes);
+        amazonS3.putObject(bucketName, destinationPath, fileStream, objectMetadata);
+    }
+
+    public AWSFile getAWSFile(String bucketName, String fileKey) throws IOException {
         S3Object object = amazonS3.getObject(new GetObjectRequest(bucketName, fileKey));
         InputStream objectData = object.getObjectContent();
         byte[] bytes = IOUtils.toByteArray(objectData);
         objectData.close();
-        return bytes;
+        return new AWSFile(object.getKey(), bytes);
     }
 }
